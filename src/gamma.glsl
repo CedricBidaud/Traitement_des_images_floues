@@ -17,6 +17,7 @@ void main(void)
 in vec2 uv;
 
 uniform sampler2D Texture1;
+
 uniform float Gamma = 1.0;
 
 out vec4  OutColor;

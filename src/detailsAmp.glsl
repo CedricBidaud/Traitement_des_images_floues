@@ -72,7 +72,7 @@ void main(void)
     //~ OutColor = vec4(G,G,G,1.0)*SobelCoef;
     
     // Masque flou
-    OutColor = vec4(inColor*IsBaseVisible + color*Strength,1.0);
+    //~ OutColor = vec4(inColor*IsBaseVisible + color*Strength,1.0);
     OutColor = vec4(color,1.0);
 }
 

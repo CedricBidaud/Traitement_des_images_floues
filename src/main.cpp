@@ -180,6 +180,7 @@ int main( int argc, char **argv )
     int comp;
 
     unsigned char * diffuse = stbi_load("textures/mountain-07.jpg", &x, &y, &comp, 3);
+    //~ unsigned char * diffuse = stbi_load("textures/vision-flou.png", &x, &y, &comp, 3);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textures[0]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, diffuse);
@@ -233,6 +234,7 @@ int main( int argc, char **argv )
     // Compute locations for blur_shader
     GLuint blur_tex1Location = glGetUniformLocation(blur_shader.program, "Texture1");
     GLuint blur_isBluredLocation = glGetUniformLocation(blur_shader.program, "IsBlured");
+    GLuint blur_sigmaLocation = glGetUniformLocation(blur_shader.program, "Sigma");
     
     // Load sobel shader
     ShaderGLSL details_shader;
@@ -248,6 +250,23 @@ int main( int argc, char **argv )
     GLuint details_detailsStrengthLocation = glGetUniformLocation(details_shader.program, "Strength");
     GLuint details_detailsCoefLocation = glGetUniformLocation(details_shader.program, "Coef");
     GLuint details_isBaseVisibleLocation = glGetUniformLocation(details_shader.program, "IsBaseVisible");
+    
+    // Load masqueFlou shader
+    ShaderGLSL masqueFlou_shader;
+    const char * shaderFilemasqueFlou = "src/masqueFlou.glsl";
+    status = load_shader_from_file(masqueFlou_shader, shaderFilemasqueFlou, ShaderGLSL::VERTEX_SHADER | ShaderGLSL::FRAGMENT_SHADER);
+    if ( status == -1 )
+    {
+        fprintf(stderr, "Error on loading  %s\n", shaderFilemasqueFlou);
+        exit( EXIT_FAILURE );
+    }    
+    // Compute locations for masqueFlou_shader
+    GLuint masqueFlou_bluredLocation = glGetUniformLocation(masqueFlou_shader.program, "BluredImage");
+    GLuint masqueFlou_midLocation = glGetUniformLocation(masqueFlou_shader.program, "MidDetails");
+    GLuint masqueFlou_smallLocation = glGetUniformLocation(masqueFlou_shader.program, "SmallDetails");
+    GLuint masqueFlou_bluredCoefLocation = glGetUniformLocation(masqueFlou_shader.program, "BluredCoef");
+    GLuint masqueFlou_midCoefLocation = glGetUniformLocation(masqueFlou_shader.program, "MidCoef");
+    GLuint masqueFlou_smallCoefLocation = glGetUniformLocation(masqueFlou_shader.program, "SmallCoef");
     
     // Load gamma shader
     ShaderGLSL gamma_shader;
@@ -266,23 +285,19 @@ int main( int argc, char **argv )
     GLuint fxFbo;
     glGenFramebuffers(1, &fxFbo);
     
-    GLuint fxTextures[2];
-    glGenTextures(2, fxTextures);
+    GLuint fxTextures[6];
+    glGenTextures(6, fxTextures);
     
-    glBindTexture(GL_TEXTURE_2D, fxTextures[0]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    for(int i = 0; i < 6; ++i){
+		glBindTexture(GL_TEXTURE_2D, fxTextures[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
     
-    glBindTexture(GL_TEXTURE_2D, fxTextures[1]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    
+   
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
         fprintf(stderr, "Error on building framebuffer\n");
@@ -355,6 +370,11 @@ int main( int argc, char **argv )
 	float detailsStrength = 1.0f;
 	float detailsCoef = 8.0f;
 	float isDetailsBaseVisible = 1.0;
+	//~ float sigma = 1.0f;
+	
+	float bluredCoef = 1.0f;
+	float midCoef = 1.0f;
+	float smallCoef = 1.0f;
 
     do
     {
@@ -476,9 +496,23 @@ int main( int argc, char **argv )
         glUniform1i(blur_tex1Location, 0);
         glUniform1i(blur_isBluredLocation, (int)isBlured);
         
+        // sigma = 1.0
+        glUniform1f(blur_sigmaLocation, 1.0);
+        
         glBindTexture(GL_TEXTURE_2D, fxTextures[0]);
         
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 , GL_TEXTURE_2D, fxTextures[1], 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        glBindVertexArray(vao[1]);
+        glDrawElements(GL_TRIANGLES, plane_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        
+        // sigma = 0.5
+        glUniform1f(blur_sigmaLocation, 0.5);
+        
+        glBindTexture(GL_TEXTURE_2D, fxTextures[0]);
+        
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 , GL_TEXTURE_2D, fxTextures[2], 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glBindVertexArray(vao[1]);
@@ -496,13 +530,53 @@ int main( int argc, char **argv )
         glUniform1f(details_detailsStrengthLocation, detailsStrength);
         glUniform1f(details_detailsCoefLocation, detailsCoef);
         
+        // sigma = 1.0
         glBindTexture(GL_TEXTURE_2D, fxTextures[1]);
         
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fxTextures[0], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fxTextures[3], 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glBindVertexArray(vao[1]);
         glDrawElements(GL_TRIANGLES, plane_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
         
+        // sigma = 0.5
+        glBindTexture(GL_TEXTURE_2D, fxTextures[2]);
+        
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fxTextures[4], 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        glBindVertexArray(vao[1]);
+        glDrawElements(GL_TRIANGLES, plane_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        
+        
+        // -----------------
+        // -- masque flou --
+        // -----------------
+        glUseProgram(masqueFlou_shader.program);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, fxTextures[0]); // blured image
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, fxTextures[3]); // mid details
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, fxTextures[4]); // small details
+        
+        glUniform1i(masqueFlou_bluredLocation, 0);
+        glUniform1i(masqueFlou_midLocation, 1);
+        glUniform1i(masqueFlou_smallLocation, 2);
+        
+        glUniform1f(masqueFlou_bluredCoefLocation, bluredCoef);
+        glUniform1f(masqueFlou_midCoefLocation, midCoef);
+        glUniform1f(masqueFlou_smallCoefLocation, smallCoef);
+        
+        
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fxTextures[5], 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        glBindVertexArray(vao[1]);
+        glDrawElements(GL_TRIANGLES, plane_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
+        
+        // --------- end fx ---------
         
         glEnable(GL_DEPTH_TEST);
         glDisable(GL_BLEND);
@@ -524,7 +598,7 @@ int main( int argc, char **argv )
 		
 		// bind last fx texture used
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, fxTextures[0]);
+        glBindTexture(GL_TEXTURE_2D, fxTextures[5]);
         
 		glUniform1f(gamma_gammaLocation, gamma);
 		
@@ -560,6 +634,9 @@ int main( int argc, char **argv )
         imguiSlider("Details Strength", &detailsStrength, 0.0, 2.0, 0.1);
         imguiSlider("Details Coef", &detailsCoef, 0.0, 20.0, 0.1);
         imguiSlider("Is details base visible", &isDetailsBaseVisible, 0.0, 1.0, 1.0);
+        imguiSlider("Blured Coef", &bluredCoef, 0.0, 2.0, 0.05);
+        imguiSlider("Mid Coef", &midCoef, 0.0, 2.0, 0.05);
+        imguiSlider("Small Coef", &smallCoef, 0.0, 2.0, 0.05);
 
         imguiEndScrollArea();
         imguiEndFrame();
