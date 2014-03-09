@@ -137,7 +137,7 @@ int main( int argc, char **argv )
         exit( EXIT_FAILURE );
     }
 
-    glfwSetWindowTitle( "001_a" );
+    glfwSetWindowTitle( "Traitement des images floues" );
 
     // Core profile is flagged as experimental in glew
 #ifdef __APPLE__
@@ -235,17 +235,19 @@ int main( int argc, char **argv )
     GLuint blur_isBluredLocation = glGetUniformLocation(blur_shader.program, "IsBlured");
     
     // Load sobel shader
-    ShaderGLSL sobel_shader;
-    const char * shaderFilesobel = "src/sobel.glsl";
-    status = load_shader_from_file(sobel_shader, shaderFilesobel, ShaderGLSL::VERTEX_SHADER | ShaderGLSL::FRAGMENT_SHADER);
+    ShaderGLSL details_shader;
+    const char * shaderFiledetails = "src/detailsAmp.glsl";
+    status = load_shader_from_file(details_shader, shaderFiledetails, ShaderGLSL::VERTEX_SHADER | ShaderGLSL::FRAGMENT_SHADER);
     if ( status == -1 )
     {
-        fprintf(stderr, "Error on loading  %s\n", shaderFilesobel);
+        fprintf(stderr, "Error on loading  %s\n", shaderFiledetails);
         exit( EXIT_FAILURE );
     }    
-    // Compute locations for sobel_shader
-    GLuint sobel_tex1Location = glGetUniformLocation(sobel_shader.program, "Texture1");
-    GLuint sobel_sobelLocation = glGetUniformLocation(sobel_shader.program, "SobelCoef");
+    // Compute locations for details_shader
+    GLuint details_tex1Location = glGetUniformLocation(details_shader.program, "Texture1");
+    GLuint details_detailsStrengthLocation = glGetUniformLocation(details_shader.program, "Strength");
+    GLuint details_detailsCoefLocation = glGetUniformLocation(details_shader.program, "Coef");
+    GLuint details_isBaseVisibleLocation = glGetUniformLocation(details_shader.program, "IsBaseVisible");
     
     // Load gamma shader
     ShaderGLSL gamma_shader;
@@ -350,7 +352,9 @@ int main( int argc, char **argv )
 	// settings
 	float gamma = 1.0f;
 	float isBlured = 1.0f;
-	float sobelCoef = 1.0f;
+	float detailsStrength = 1.0f;
+	float detailsCoef = 8.0f;
+	float isDetailsBaseVisible = 1.0;
 
     do
     {
@@ -481,14 +485,16 @@ int main( int argc, char **argv )
         glDrawElements(GL_TRIANGLES, plane_triangleCount * 3, GL_UNSIGNED_INT, (void*)0);
         
         
-        // -----------
-        // -- sobel --
-        // -----------
-        glUseProgram(sobel_shader.program);
+        // -------------
+        // -- details --
+        // -------------
+        glUseProgram(details_shader.program);
         
         glActiveTexture(GL_TEXTURE0);
-        glUniform1i(sobel_tex1Location, 0);
-        glUniform1f(sobel_sobelLocation, sobelCoef);
+        glUniform1i(details_tex1Location, 0);
+        glUniform1i(details_isBaseVisibleLocation, (int)isDetailsBaseVisible);
+        glUniform1f(details_detailsStrengthLocation, detailsStrength);
+        glUniform1f(details_detailsCoefLocation, detailsCoef);
         
         glBindTexture(GL_TEXTURE_2D, fxTextures[1]);
         
@@ -551,7 +557,9 @@ int main( int argc, char **argv )
         imguiLabel(lineBuffer);
         imguiSlider("Gamma", &gamma, 0.0, 2.0, 0.1);
         imguiSlider("Blured", &isBlured, 0.0, 1.0, 1.0);
-        imguiSlider("Sobel", &sobelCoef, 0.0, 2.0, 0.1);
+        imguiSlider("Details Strength", &detailsStrength, 0.0, 2.0, 0.1);
+        imguiSlider("Details Coef", &detailsCoef, 0.0, 20.0, 0.1);
+        imguiSlider("Is details base visible", &isDetailsBaseVisible, 0.0, 1.0, 1.0);
 
         imguiEndScrollArea();
         imguiEndFrame();

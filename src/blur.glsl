@@ -18,47 +18,86 @@ in vec2 uv;
 
 uniform sampler2D Texture1;
 uniform int IsBlured = 1;
+uniform float Sigma = 0.5;
 
 out vec4  OutColor;
 
 void main ()
 {
-	vec4 blured = vec4(0.0);
+	vec3 blured = vec3(0.0);
 	//~ int samples = SampleCount * 2;
 	
 	if(IsBlured == 1){
 	
 		float gaussian[25];
-		gaussian[0] = 1.0;
-		gaussian[1] = 4.0;
-		gaussian[2] = 7.0;
-		gaussian[3] = 4.0;
-		gaussian[4] = 1.0;
 		
-		gaussian[5] = 4.0;
-		gaussian[6] = 16.0;
-		gaussian[7] = 26.0;
-		gaussian[8] = 16.0;
-		gaussian[9] = 4.0;
+		if(Sigma > 0.9) {
 		
-		gaussian[10] = 7.0;
-		gaussian[11] = 26.0;
-		gaussian[12] = 41.0;
-		gaussian[13] = 26.0;
-		gaussian[14] = 7.0;
-		
-		gaussian[15] = 4.0;
-		gaussian[16] = 16.0;
-		gaussian[17] = 26.0;
-		gaussian[18] = 16.0;
-		gaussian[19] = 4.0;
-		
-		gaussian[20] = 1.0;
-		gaussian[21] = 4.0;
-		gaussian[22] = 7.0;
-		gaussian[23] = 4.0;
-		gaussian[24] = 1.0;
-		
+			// sigma = 1
+			gaussian[0] = 0.003765;
+			gaussian[1] = 0.015019;
+			gaussian[2] = 0.023792;
+			gaussian[3] = 0.015019;
+			gaussian[4] = 0.003765;
+			
+			gaussian[5] = 0.015019;
+			gaussian[6] = 0.059912;
+			gaussian[7] = 0.094907;
+			gaussian[8] = 0.059912;
+			gaussian[9] = 0.015019;
+			
+			gaussian[10] = 0.023792;
+			gaussian[11] = 0.094907;
+			gaussian[12] = 0.150342;
+			gaussian[13] = 0.094907;
+			gaussian[14] = 0.023792;
+			
+			gaussian[15] = 0.015019;
+			gaussian[16] = 0.059912;
+			gaussian[17] = 0.094907;
+			gaussian[18] = 0.059912;
+			gaussian[19] = 0.015019;
+			
+			gaussian[20] = 0.003765;
+			gaussian[21] = 0.015019;
+			gaussian[22] = 0.023792;
+			gaussian[23] = 0.015019;
+			gaussian[24] = 0.003765;
+			
+		}else{
+			
+			// sigma = 0.5
+			gaussian[0] = 0.000002;
+			gaussian[1] = 0.000212;
+			gaussian[2] = 0.000922;
+			gaussian[3] = 0.000212;
+			gaussian[4] = 0.000002;
+			
+			gaussian[5] = 0.000212;
+			gaussian[6] = 0.024745;
+			gaussian[7] = 0.107391;
+			gaussian[8] = 0.024745;
+			gaussian[9] = 0.000212;
+			
+			gaussian[10] = 0.000922;
+			gaussian[11] = 0.107391;
+			gaussian[12] = 0.466066;
+			gaussian[13] = 0.107391;
+			gaussian[14] = 0.000922;
+			
+			gaussian[15] = 0.000212;
+			gaussian[16] = 0.024745;
+			gaussian[17] = 0.94907;
+			gaussian[18] = 0.024745;
+			gaussian[19] = 0.000212;
+			
+			gaussian[20] = 0.000002;
+			gaussian[21] = 0.000212;
+			gaussian[22] = 0.000922;
+			gaussian[23] = 0.000212;
+			gaussian[24] = 0.000002;
+			
+		}
 		
 		for(int i = -2; i <= 2; ++i){
 			for(int j = -2; j <= 2; ++j){
@@ -68,16 +107,18 @@ void main ()
 				
 				int idx = (i+2) + (j+2)*5;
 				
-				blured += texture(Texture1, tempUV).rgba * gaussian[idx];
+				blured += texture(Texture1, tempUV).rgb * gaussian[idx];
 			}
 		}
 		
-		blured /= 273.0f;
+		
+		//~ blured /= 273.0f;
+		//~ blured /= 6.161f;
 	}else{
-		blured = texture(Texture1, uv).rgba;
+		blured = texture(Texture1, uv).rgb;
 	}
 	
-    OutColor = blured;
+    OutColor = vec4(blured, 1.0);
 }
 #endif
 
