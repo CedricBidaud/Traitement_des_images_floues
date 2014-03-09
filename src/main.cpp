@@ -180,7 +180,7 @@ int main( int argc, char **argv )
     int comp;
 
     unsigned char * diffuse = stbi_load("textures/mountain-07.jpg", &x, &y, &comp, 3);
-    //~ unsigned char * diffuse = stbi_load("textures/vision-flou.png", &x, &y, &comp, 3);
+    //~ unsigned char * diffuse = stbi_load("textures/traffic.jpg", &x, &y, &comp, 3);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textures[0]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, diffuse);
@@ -285,10 +285,10 @@ int main( int argc, char **argv )
     GLuint fxFbo;
     glGenFramebuffers(1, &fxFbo);
     
-    GLuint fxTextures[6];
+    GLuint fxTextures[7];
     glGenTextures(6, fxTextures);
     
-    for(int i = 0; i < 6; ++i){
+    for(int i = 0; i < 7; ++i){
 		glBindTexture(GL_TEXTURE_2D, fxTextures[i]);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -478,7 +478,7 @@ int main( int argc, char **argv )
         // Viewport 
         glViewport( 0, 0, width, height  );
 		// link texture
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 , GL_TEXTURE_2D, fxTextures[0], 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 , GL_TEXTURE_2D, fxTextures[6], 0);
         //~ glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
@@ -499,7 +499,7 @@ int main( int argc, char **argv )
         // sigma = 1.0
         glUniform1f(blur_sigmaLocation, 1.0);
         
-        glBindTexture(GL_TEXTURE_2D, fxTextures[0]);
+        glBindTexture(GL_TEXTURE_2D, fxTextures[6]);
         
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 , GL_TEXTURE_2D, fxTextures[1], 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -510,7 +510,7 @@ int main( int argc, char **argv )
         // sigma = 0.5
         glUniform1f(blur_sigmaLocation, 0.5);
         
-        glBindTexture(GL_TEXTURE_2D, fxTextures[0]);
+        glBindTexture(GL_TEXTURE_2D, fxTextures[6]);
         
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 , GL_TEXTURE_2D, fxTextures[2], 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -555,7 +555,7 @@ int main( int argc, char **argv )
         glUseProgram(masqueFlou_shader.program);
         
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, fxTextures[0]); // blured image
+        glBindTexture(GL_TEXTURE_2D, fxTextures[1]); // blured image
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, fxTextures[3]); // mid details
         glActiveTexture(GL_TEXTURE2);
@@ -632,7 +632,7 @@ int main( int argc, char **argv )
         imguiSlider("Gamma", &gamma, 0.0, 2.0, 0.1);
         imguiSlider("Blured", &isBlured, 0.0, 1.0, 1.0);
         imguiSlider("Details Strength", &detailsStrength, 0.0, 2.0, 0.1);
-        imguiSlider("Details Coef", &detailsCoef, 0.0, 20.0, 0.1);
+        imguiSlider("Details Coef", &detailsCoef, 7.0, 9.0, 0.1);
         imguiSlider("Is details base visible", &isDetailsBaseVisible, 0.0, 1.0, 1.0);
         imguiSlider("Blured Coef", &bluredCoef, 0.0, 2.0, 0.05);
         imguiSlider("Mid Coef", &midCoef, 0.0, 2.0, 0.05);
